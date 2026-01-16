@@ -1,30 +1,37 @@
 export const COLORS = {
-  primary: '#6366F1',
-  primaryDark: '#4F46E5',
-  primaryLight: '#A5B4FC',
+  // Brand colors
+  primary: '#2E6417',         // Handled forest green
+  primaryDark: '#234F12',     // Darker green for pressed states
+  primaryLight: '#4A8A2D',    // Lighter green for highlights
 
-  secondary: '#EC4899',
-  secondaryDark: '#DB2777',
-  secondaryLight: '#F9A8D4',
+  // Secondary - warm terracotta accent
+  secondary: '#C4A484',
+  secondaryDark: '#A8896B',
+  secondaryLight: '#D4BFA6',
 
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
+  // Status colors
+  success: '#2E6417',         // Use brand green for success
+  warning: '#D4A84B',         // Warm gold, not harsh yellow
+  error: '#C45C4A',           // Warm red, not alarming
+  info: '#5B8A72',            // Muted sage
 
-  background: '#FFFFFF',
-  backgroundSecondary: '#F8FAFC',
-  surface: '#FFFFFF',
+  // Backgrounds
+  background: '#FAF9F6',      // Warm cream (brand background)
+  backgroundSecondary: '#F5F4F1',  // Slightly darker cream
+  surface: '#FFFFFF',         // Pure white for cards
 
-  text: '#1E293B',
-  textSecondary: '#64748B',
-  textTertiary: '#94A3B8',
-  textInverse: '#FFFFFF',
+  // Text
+  text: '#2D2D2D',            // Soft black
+  textSecondary: '#6B6B6B',   // Medium gray
+  textTertiary: '#9B9B9B',    // Light gray
+  textInverse: '#FAF9F6',     // Cream for dark backgrounds
 
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
+  // Borders
+  border: '#E8E6E1',          // Warm gray border
+  borderLight: '#F0EEE9',     // Lighter warm border
 
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  // Overlay
+  overlay: 'rgba(45, 45, 45, 0.5)',
 };
 
 export const SPACING = {
