@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // User type that matches what pages expect
@@ -22,7 +21,16 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+// Default context value for SSR/SSG
+const defaultContextValue: AuthContextType = {
+  user: null,
+  supabaseUser: null,
+  isLoading: true,
+  signOut: async () => {},
+  refreshUser: async () => {},
+};
+
+const AuthContext = createContext<AuthContextType>(defaultContextValue);
 
 // Transform Supabase user to our AuthUser format
 function transformUser(supabaseUser: SupabaseUser | null, profileData?: { subscriptionTier?: string; displayName?: string }): AuthUser | null {
@@ -46,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser): Promise<AuthUser | null> => {
     try {
@@ -61,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    const { createClient } = await import('@/lib/supabase/client');
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -75,10 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchUserProfile]);
 
   useEffect(() => {
-    const supabase = createClient();
+    setIsMounted(true);
 
-    // Check current session
+    // Only run on client
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
     const initAuth = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+
+      // Check current session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.user) {
@@ -87,35 +108,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(authUser);
       }
       setIsLoading(false);
+
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_OUT' || !session) {
+            setSupabaseUser(null);
+            setUser(null);
+          } else if (session?.user) {
+            setSupabaseUser(session.user);
+            const authUser = await fetchUserProfile(session.user);
+            setUser(authUser);
+          }
+        }
+      );
+
+      return () => {
+        subscription.unsubscribe();
+      };
     };
 
     initAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          setSupabaseUser(null);
-          setUser(null);
-        } else if (session?.user) {
-          setSupabaseUser(session.user);
-          const authUser = await fetchUserProfile(session.user);
-          setUser(authUser);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [fetchUserProfile]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
+    const { createClient } = await import('@/lib/supabase/client');
     const supabase = createClient();
     await supabase.auth.signOut();
     setSupabaseUser(null);
     setUser(null);
-  };
+  }, []);
+
+  // During SSR/SSG, return default context
+  if (!isMounted) {
+    return (
+      <AuthContext.Provider value={defaultContextValue}>
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, supabaseUser, isLoading, signOut, refreshUser }}>
@@ -125,11 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 }
 
 // Re-export createClient for backwards compatibility

@@ -27,7 +27,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nDisable ESLint during Vercel builds\n\nFix monorepo ESLint parser resolution issue on Vercel\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx prisma db pull:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd globalEnv to turbo.json for Vercel builds\n\nPass environment variables through turborepo to Next.js build\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nSimplify Prisma datasource config\n\nRemove directUrl to simplify Vercel builds - session pooler not needed\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nSimplify Prisma datasource config\n\nRemove directUrl to simplify Vercel builds - session pooler not needed\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd custom error pages for static generation\n\n- Add not-found.tsx for 404 errors\n- Add error.tsx for general errors  \n- Add global-error.tsx for root-level errors\n\nThese pages avoid React hooks to prevent useContext errors\nduring static page generation on Vercel.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
