@@ -26,7 +26,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nFix Supabase + Vercel deployment issues\n\n- Add useAuth hook with AuthProvider for client-side auth\n- Fix Prisma schema \\(use Supabase user ID as primary key\\)\n- Downgrade Prisma to v5.22.0 for stability\n- Fix TypeScript errors in pages and API routes\n- Update API client types and response handling\n- Add lazy Stripe initialization for build-time\n- Fix Claude SDK PDF handling\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nDisable ESLint during Vercel builds\n\nFix monorepo ESLint parser resolution issue on Vercel\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx prisma db pull:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd globalEnv to turbo.json for Vercel builds\n\nPass environment variables through turborepo to Next.js build\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd globalEnv to turbo.json for Vercel builds\n\nPass environment variables through turborepo to Next.js build\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nSimplify Prisma datasource config\n\nRemove directUrl to simplify Vercel builds - session pooler not needed\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
