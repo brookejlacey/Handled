@@ -70,19 +70,19 @@ export default function ChatPage() {
 
     try {
       const response = await api.sendMessage({
-        content: text,
+        message: text,
         conversationId: conversationId || undefined,
       });
 
       const assistantMessage: UIMessage = {
-        id: response.data!.message.id,
+        id: response.data.message.id,
         role: 'assistant',
-        content: response.data!.message.content,
-        createdAt: new Date(response.data!.message.createdAt),
+        content: response.data.message.content,
+        createdAt: new Date(response.data.message.createdAt),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-      setConversationId(response.data!.conversationId);
+      setConversationId(response.data.conversationId);
     } catch (error) {
       console.error('Failed to send message:', error);
       // Add error message

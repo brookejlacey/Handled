@@ -1,14 +1,25 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
-  typescript: true,
-});
+// Lazy initialization to avoid build-time errors when env vars aren't available
+let stripeInstance: Stripe | null = null;
+
+export function getStripe(): Stripe {
+  if (!stripeInstance) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
+    }
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-12-15.clover',
+      typescript: true,
+    });
+  }
+  return stripeInstance;
+}
 
 // Price IDs - set these in your Stripe dashboard
 export const PRICE_IDS = {
-  monthly: process.env.STRIPE_MONTHLY_PRICE_ID!,
-  annual: process.env.STRIPE_ANNUAL_PRICE_ID!,
+  monthly: process.env.STRIPE_MONTHLY_PRICE_ID || '',
+  annual: process.env.STRIPE_ANNUAL_PRICE_ID || '',
 };
 
 // Create a checkout session for subscription
@@ -23,7 +34,7 @@ export async function createCheckoutSession({
   successUrl: string;
   cancelUrl: string;
 }) {
-  return stripe.checkout.sessions.create({
+  return getStripe().checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
@@ -46,7 +57,7 @@ export async function createBillingPortalSession({
   customerId: string;
   returnUrl: string;
 }) {
-  return stripe.billingPortal.sessions.create({
+  return getStripe().billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
   });
@@ -62,11 +73,11 @@ export async function createCustomer({
   name?: string;
   metadata?: Record<string, string>;
 }) {
-  return stripe.customers.create({
+  return getStripe().customers.create({
     email,
     name,
     metadata,
   });
 }
 
-export default stripe;
+export default getStripe;

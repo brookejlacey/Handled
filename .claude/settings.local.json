@@ -13,7 +13,16 @@
       "Bash(npx expo start --web)",
       "Bash(npx expo start:*)",
       "Bash(npx expo:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nReplace Azure Functions with Vercel + Supabase stack\n\n- Remove Azure Functions API and Bicep infrastructure\n- Add Next.js web app with App Router\n- Set up Supabase Auth \\(email, Google, Apple OAuth\\)\n- Add Prisma ORM with schema for users, tasks, chat, documents\n- Create API routes for tasks, chat, documents, onboarding\n- Add Stripe webhook integration for subscriptions\n- Implement auth server actions and protected routes\n- Update mobile app with Supabase client and dark mode theme\n- Add Claude AI integration for chat and document analysis\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run build)",
+      "Bash(npx prisma validate:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(git add:*)"
     ]
   }
 }

@@ -2,7 +2,32 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
-import type { Task, TaskStatus, TaskCategory, UpdateTaskRequest } from '@handled/shared';
+import type { TaskStatus, TaskCategory } from '@handled/shared';
+
+// Local Task type matching API response
+interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Local update request type
+interface UpdateTaskRequest {
+  title?: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  dueDate?: string;
+  notes?: string;
+}
 
 interface UseTasksOptions {
   status?: TaskStatus;
@@ -25,7 +50,7 @@ export function useTasks(options: UseTasksOptions = {}) {
         category: options.category,
         pageSize: options.pageSize || 100,
       });
-      setTasks(response.data?.tasks || []);
+      setTasks(response.tasks || []);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -40,10 +65,11 @@ export function useTasks(options: UseTasksOptions = {}) {
   const updateTask = async (id: string, updates: UpdateTaskRequest) => {
     try {
       const response = await api.updateTask(id, updates);
+      const updated = response as Task;
       setTasks((prev) =>
-        prev.map((t) => (t.id === id ? response.data! : t))
+        prev.map((t) => (t.id === id ? updated : t))
       );
-      return response.data!;
+      return updated;
     } catch (err) {
       throw err;
     }

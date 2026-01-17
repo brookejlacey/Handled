@@ -153,12 +153,37 @@ class ApiClient {
   async sendMessage(data: {
     message: string;
     conversationId?: string;
-  }): Promise<Response> {
-    // Returns a streaming response
-    return fetch('/api/chat', {
+    stream?: boolean;
+  }): Promise<{
+    data: {
+      conversationId: string;
+      message: ChatMessage;
+    };
+  }> {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || 'Request failed');
+    }
+
+    return response.json();
+  }
+
+  async sendMessageStream(data: {
+    message: string;
+    conversationId?: string;
+  }): Promise<Response> {
+    // Returns a streaming response for SSE
+    return fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, stream: true }),
       credentials: 'include',
     });
   }

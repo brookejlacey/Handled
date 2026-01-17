@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Nunito } from 'next/font/google';
+import { Providers } from './providers';
 import './globals.css';
 
 const nunito = Nunito({
@@ -53,7 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={nunito.variable}>
       <body className="min-h-screen bg-surface-cream font-sans">
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

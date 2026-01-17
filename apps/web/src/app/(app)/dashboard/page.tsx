@@ -6,7 +6,20 @@ import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/compo
 import { useAuth } from '@/lib/auth';
 import api from '@/lib/api';
 import { formatRelativeDate } from '@/lib/utils';
-import type { Task } from '@handled/shared';
+
+// Using local Task type from API response
+interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 import {
   CheckCircle2,
   Clock,
@@ -27,7 +40,7 @@ export default function DashboardPage() {
     const fetchTasks = async () => {
       try {
         const response = await api.getTasks({ pageSize: 5, status: 'pending' });
-        setTasks(response.data?.tasks || []);
+        setTasks(response.tasks || []);
       } catch (error) {
         console.error('Failed to fetch tasks:', error);
       } finally {
@@ -249,12 +262,12 @@ function StatCard({
 }
 
 function TaskCard({ task }: { task: Task }) {
-  const priorityColors = {
+  const priorityColors: Record<string, 'default' | 'warning' | 'error' | 'success'> = {
     low: 'default',
     medium: 'warning',
     high: 'error',
     urgent: 'error',
-  } as const;
+  };
 
   return (
     <Link href={`/tasks/${task.id}`}>
@@ -267,7 +280,7 @@ function TaskCard({ task }: { task: Task }) {
             <div className="flex items-center gap-2 mb-1">
               <h3 className="font-medium text-text-primary truncate">{task.title}</h3>
               {task.priority !== 'low' && (
-                <Badge variant={priorityColors[task.priority]}>{task.priority}</Badge>
+                <Badge variant={priorityColors[task.priority] || 'default'}>{task.priority}</Badge>
               )}
             </div>
             <p className="text-sm text-text-secondary truncate">{task.description}</p>

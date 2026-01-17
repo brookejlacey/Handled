@@ -6,13 +6,25 @@ import Link from 'next/link';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import api from '@/lib/api';
 import { formatDate, cn } from '@/lib/utils';
-import type { Task as BaseTask, TaskStatus } from '@handled/shared';
+import type { TaskStatus } from '@handled/shared';
 import { TASK_CATEGORIES } from '@handled/shared/constants';
 
-// Extended Task type that may include template-derived fields
-interface Task extends BaseTask {
+// Local Task type matching API response
+interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
   instructions?: string | null;
   whyItMatters?: string | null;
+  recurrence?: string | null;
+  notes?: string | null;
 }
 import {
   ArrowLeft,
@@ -40,7 +52,7 @@ export default function TaskDetailPage() {
     const fetchTask = async () => {
       try {
         const response = await api.getTask(params.id as string);
-        setTask(response.data!);
+        setTask(response as Task);
       } catch (error) {
         console.error('Failed to fetch task:', error);
       } finally {
@@ -62,7 +74,7 @@ export default function TaskDetailPage() {
         status: newStatus,
         ...(newStatus === 'completed' && completionNotes ? { notes: completionNotes } : {}),
       });
-      setTask(response.data!);
+      setTask(response as Task);
       setShowCompleteModal(false);
       setCompletionNotes('');
     } catch (error) {
@@ -96,7 +108,7 @@ export default function TaskDetailPage() {
     );
   }
 
-  const categoryInfo = TASK_CATEGORIES[task.category];
+  const categoryInfo = TASK_CATEGORIES[task.category as keyof typeof TASK_CATEGORIES];
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
 
   return (
@@ -237,14 +249,7 @@ export default function TaskDetailPage() {
             <DetailItem
               icon={<Clock className="w-4 h-4" />}
               label="Recurrence"
-              value={`${task.recurrence.frequency}`}
-            />
-          )}
-          {task.estimatedMinutes && (
-            <DetailItem
-              icon={<Clock className="w-4 h-4" />}
-              label="Est. Time"
-              value={`${task.estimatedMinutes} min`}
+              value={task.recurrence}
             />
           )}
         </div>
@@ -313,8 +318,8 @@ export default function TaskDetailPage() {
   );
 }
 
-function StatusIcon({ status }: { status: TaskStatus }) {
-  const icons = {
+function StatusIcon({ status }: { status: string }) {
+  const icons: Record<string, React.ReactNode> = {
     pending: <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center"><Clock className="w-5 h-5 text-amber-600" /></div>,
     in_progress: <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"><Clock className="w-5 h-5 text-blue-600" /></div>,
     completed: <div className="w-10 h-10 bg-brand-green-lighter rounded-full flex items-center justify-center"><CheckCircle2 className="w-5 h-5 text-brand-green" /></div>,

@@ -5,8 +5,22 @@ import Link from 'next/link';
 import { Card, Button, Badge, Input } from '@/components/ui';
 import api from '@/lib/api';
 import { formatRelativeDate, cn } from '@/lib/utils';
-import type { Task, TaskCategory, TaskStatus, TaskPriority } from '@handled/shared';
+import type { TaskCategory, TaskStatus } from '@handled/shared';
 import { TASK_CATEGORIES } from '@handled/shared/constants';
+
+// Local Task type matching API response
+interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  priority: string;
+  status: string;
+  dueDate?: string | null;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 import {
   Search,
   Filter,
@@ -38,7 +52,7 @@ export default function TasksPage() {
         if (categoryFilter !== 'all') params.category = categoryFilter;
 
         const response = await api.getTasks(params);
-        setTasks(response.data?.tasks || []);
+        setTasks(response.tasks || []);
       } catch (error) {
         console.error('Failed to fetch tasks:', error);
       } finally {
@@ -283,7 +297,7 @@ function TaskSection({
 }
 
 function TaskRow({ task }: { task: Task }) {
-  const statusIcons = {
+  const statusIcons: Record<string, React.ReactNode> = {
     pending: <Circle className="w-5 h-5 text-text-muted" />,
     in_progress: <AlertCircle className="w-5 h-5 text-amber-500" />,
     completed: <CheckCircle2 className="w-5 h-5 text-brand-green" />,
@@ -291,14 +305,14 @@ function TaskRow({ task }: { task: Task }) {
     skipped: <X className="w-5 h-5 text-text-muted" />,
   };
 
-  const priorityVariants: Record<TaskPriority, 'default' | 'success' | 'warning' | 'error'> = {
+  const priorityVariants: Record<string, 'default' | 'success' | 'warning' | 'error'> = {
     low: 'default',
     medium: 'default',
     high: 'warning',
     urgent: 'error',
   };
 
-  const categoryInfo = TASK_CATEGORIES[task.category];
+  const categoryInfo = TASK_CATEGORIES[task.category as keyof typeof TASK_CATEGORIES];
 
   return (
     <Link href={`/tasks/${task.id}`}>

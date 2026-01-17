@@ -121,7 +121,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           where: { id },
           data: {
             analysisStatus: AnalysisStatus.COMPLETED,
-            analysisResult: analysis as unknown as Record<string, unknown>,
+            analysisResult: JSON.parse(JSON.stringify(analysis)),
             analyzedAt: new Date(),
             category: category || document.category,
           },

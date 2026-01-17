@@ -16,7 +16,7 @@ export async function GET() {
     where: { id: user.id },
     include: {
       preferences: true,
-      onboarding: true,
+      onboardingData: true,
     },
   });
 
@@ -30,7 +30,7 @@ export async function GET() {
       },
       include: {
         preferences: true,
-        onboarding: true,
+        onboardingData: true,
       },
     });
 
@@ -40,7 +40,7 @@ export async function GET() {
       displayName: newUser.displayName,
       subscriptionTier: newUser.subscriptionTier,
       subscriptionStatus: newUser.subscriptionStatus,
-      hasCompletedOnboarding: !!newUser.onboarding?.completed,
+      hasCompletedOnboarding: !!newUser.onboardingData?.completedAt,
       preferences: newUser.preferences,
     });
   }
@@ -51,7 +51,7 @@ export async function GET() {
     displayName: dbUser.displayName,
     subscriptionTier: dbUser.subscriptionTier,
     subscriptionStatus: dbUser.subscriptionStatus,
-    hasCompletedOnboarding: !!dbUser.onboarding?.completed,
+    hasCompletedOnboarding: !!dbUser.onboardingData?.completedAt,
     preferences: dbUser.preferences,
   });
 }

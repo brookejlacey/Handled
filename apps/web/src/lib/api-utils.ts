@@ -34,7 +34,7 @@ export async function getAuthenticatedUser() {
 
   // Get or create user in database
   let dbUser = await prisma.user.findUnique({
-    where: { supabaseId: user.id },
+    where: { id: user.id },
     include: {
       preferences: true,
       onboardingData: true,
@@ -45,7 +45,7 @@ export async function getAuthenticatedUser() {
   if (!dbUser) {
     dbUser = await prisma.user.create({
       data: {
-        supabaseId: user.id,
+        id: user.id,
         email: user.email!,
         displayName: user.user_metadata?.display_name || null,
         avatarUrl: user.user_metadata?.avatar_url || null,

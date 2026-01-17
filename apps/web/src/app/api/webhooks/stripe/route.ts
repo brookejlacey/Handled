@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import prisma from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
+import { getStripe } from '@/lib/stripe';
 import { SubscriptionStatus, SubscriptionTier } from '@prisma/client';
 
 // Disable body parsing - we need the raw body for signature verification
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
@@ -87,7 +87,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     : session.subscription.id;
 
   // Get the subscription details
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
   const priceId = subscription.items.data[0]?.price.id;
 
   // Determine tier from price

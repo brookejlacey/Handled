@@ -126,6 +126,38 @@ export async function analyzeDocument(
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf',
   fileName: string
 ): Promise<DocumentAnalysis> {
+  // PDF files can't be sent as images - analyze via text extraction prompt
+  if (mediaType === 'application/pdf') {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      system: DOCUMENT_ANALYSIS_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: `Please analyze this PDF document: "${fileName}". Note: The document content could not be extracted. Please provide a generic analysis structure for a PDF document.`,
+        },
+      ],
+    });
+
+    const textContent = response.content.find((c) => c.type === 'text');
+    const text = textContent?.type === 'text' ? textContent.text : '{}';
+
+    try {
+      const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/) || text.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
+      return JSON.parse(jsonStr);
+    } catch {
+      return {
+        documentType: 'pdf',
+        summary: 'PDF document uploaded - content analysis requires additional processing.',
+        keyFindings: [],
+        actionItems: [],
+        relevantTasks: [],
+      };
+    }
+  }
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
@@ -138,7 +170,7 @@ export async function analyzeDocument(
             type: 'image',
             source: {
               type: 'base64',
-              media_type: mediaType,
+              media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
               data: base64Content,
             },
           },
