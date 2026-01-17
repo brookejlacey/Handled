@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ping:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(npx expo start --web)",
+      "Bash(npx expo start:*)",
+      "Bash(npx expo:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

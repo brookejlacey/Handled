@@ -1,0 +1,311 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// USER & AUTH
+// ============================================================================
+
+model User {
+  id                   String            @id @default(uuid())
+  email                String            @unique
+  displayName          String?
+  avatarUrl            String?
+  supabaseId           String            @unique @map("supabase_id")
+
+  // Subscription
+  subscriptionTier     SubscriptionTier  @default(FREE) @map("subscription_tier")
+  subscriptionStatus   SubscriptionStatus @default(INACTIVE) @map("subscription_status")
+  stripeCustomerId     String?           @unique @map("stripe_customer_id")
+  stripeSubscriptionId String?           @map("stripe_subscription_id")
+
+  // RevenueCat (mobile)
+  revenuecatId         String?           @unique @map("revenuecat_id")
+
+  // Timestamps
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  preferences          UserPreferences?
+  onboardingData       OnboardingData?
+  tasks                Task[]
+  conversations        Conversation[]
+  documents            Document[]
+
+  @@map("users")
+}
+
+model UserPreferences {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+
+  // Notification settings
+  emailNotifications    Boolean  @default(true) @map("email_notifications")
+  pushNotifications     Boolean  @default(true) @map("push_notifications")
+  taskReminders         Boolean  @default(true) @map("task_reminders")
+  weeklyDigest          Boolean  @default(true) @map("weekly_digest")
+
+  // App preferences
+  timezone              String   @default("America/New_York")
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model OnboardingData {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+
+  // Life situation
+  ageRange              String?   @map("age_range")
+  employmentStatus      String?   @map("employment_status")
+  relationshipStatus    String?   @map("relationship_status")
+  hasChildren           Boolean?  @map("has_children")
+
+  // Financial situation
+  hasRetirementAccounts Boolean?  @map("has_retirement_accounts")
+  hasOld401k            Boolean?  @map("has_old_401k")
+  hasLifeInsurance      Boolean?  @map("has_life_insurance")
+  hasWill               Boolean?  @map("has_will")
+  hasEmergencyFund      Boolean?  @map("has_emergency_fund")
+
+  // Recent life events
+  recentLifeEvents      String[]  @map("recent_life_events")
+
+  // Goals
+  financialGoals        String[]  @map("financial_goals")
+
+  completedAt           DateTime? @map("completed_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_data")
+}
+
+// ============================================================================
+// TASKS
+// ============================================================================
+
+model Task {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+  templateId        String?       @map("template_id")
+
+  // Task details
+  title             String
+  description       String?
+  category          TaskCategory
+  priority          TaskPriority  @default(MEDIUM)
+  status            TaskStatus    @default(NOT_STARTED) @map("status")
+
+  // Scheduling
+  dueDate           DateTime?     @map("due_date")
+  reminderDate      DateTime?     @map("reminder_date")
+
+  // Recurrence
+  isRecurring       Boolean       @default(false) @map("is_recurring")
+  recurrenceRule    String?       @map("recurrence_rule") // RRULE format
+  lastCompletedAt   DateTime?     @map("last_completed_at")
+  nextDueDate       DateTime?     @map("next_due_date")
+
+  // Progress
+  steps             Json?         // Array of step objects with completed status
+  notes             String?
+
+  // Timestamps
+  completedAt       DateTime?     @map("completed_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template          TaskTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@map("tasks")
+}
+
+model TaskTemplate {
+  id                String        @id @default(uuid())
+
+  // Template details
+  title             String
+  description       String?
+  category          TaskCategory
+  defaultPriority   TaskPriority  @default(MEDIUM) @map("default_priority")
+
+  // Guidance
+  steps             Json?         // Array of step objects
+  tips              String[]
+  estimatedMinutes  Int?          @map("estimated_minutes")
+
+  // Recurrence suggestion
+  suggestedRecurrence String?     @map("suggested_recurrence")
+
+  // Targeting
+  lifeEvents        String[]      @map("life_events") // Which life events trigger this
+  isActive          Boolean       @default(true) @map("is_active")
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  tasks             Task[]
+
+  @@map("task_templates")
+}
+
+// ============================================================================
+// CHAT / AI
+// ============================================================================
+
+model Conversation {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+
+  title             String?
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages          ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id                String        @id @default(uuid())
+  conversationId    String        @map("conversation_id")
+
+  role              MessageRole
+  content           String
+
+  // For AI responses, track tokens used
+  promptTokens      Int?          @map("prompt_tokens")
+  completionTokens  Int?          @map("completion_tokens")
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  conversation      Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
+}
+
+// ============================================================================
+// DOCUMENTS
+// ============================================================================
+
+model Document {
+  id                String        @id @default(uuid())
+  userId            String        @map("user_id")
+
+  // File info
+  fileName          String        @map("file_name")
+  fileType          String        @map("file_type")
+  fileSize          Int           @map("file_size")
+  storagePath       String        @map("storage_path") // Supabase Storage path
+
+  // Metadata
+  category          DocumentCategory?
+  description       String?
+
+  // AI analysis
+  analysisStatus    AnalysisStatus @default(PENDING) @map("analysis_status")
+  analysisResult    Json?         @map("analysis_result")
+  analyzedAt        DateTime?     @map("analyzed_at")
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+  @@map("documents")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum SubscriptionTier {
+  FREE
+  MONTHLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+}
+
+enum TaskCategory {
+  CREDIT_SCORE
+  RETIREMENT
+  INSURANCE
+  TAXES
+  ESTATE_PLANNING
+  BILLS_SUBSCRIPTIONS
+  BANKING
+  INVESTMENTS
+  DEBT
+  EMERGENCY_FUND
+  BENEFICIARIES
+  DOCUMENTS
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum DocumentCategory {
+  TAX_RETURN
+  BANK_STATEMENT
+  INVESTMENT_STATEMENT
+  INSURANCE_POLICY
+  WILL_ESTATE
+  EMPLOYMENT
+  IDENTIFICATION
+  OTHER
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
