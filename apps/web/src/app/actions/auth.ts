@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { headers } from 'next/headers';
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -58,8 +57,7 @@ export async function signOut() {
 
 export async function signInWithGoogle() {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get('origin') || 'http://localhost:3000';
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -79,8 +77,7 @@ export async function signInWithGoogle() {
 
 export async function signInWithApple() {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get('origin') || 'http://localhost:3000';
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'apple',
@@ -100,8 +97,7 @@ export async function signInWithApple() {
 
 export async function resetPassword(formData: FormData) {
   const supabase = await createClient();
-  const headersList = await headers();
-  const origin = headersList.get('origin') || 'http://localhost:3000';
+  const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   const email = formData.get('email') as string;
 
