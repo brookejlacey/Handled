@@ -26,6 +26,7 @@ interface UIMessage {
   role: 'user' | 'assistant';
   content: string;
   createdAt: Date;
+  feedback?: 'HELPFUL' | 'NOT_HELPFUL' | null;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -42,8 +43,25 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFeedback = async (messageId: string, rating: 'HELPFUL' | 'NOT_HELPFUL') => {
+    setFeedbackSubmitting(messageId);
+    try {
+      await api.submitFeedback({ messageId, rating });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, feedback: rating } : m
+        )
+      );
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+    } finally {
+      setFeedbackSubmitting(null);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -180,6 +198,8 @@ export default function ChatPage() {
                 onCopy={handleCopy}
                 isCopied={copiedId === message.id}
                 userName={user?.displayName || 'You'}
+                onFeedback={handleFeedback}
+                isSubmittingFeedback={feedbackSubmitting === message.id}
               />
             ))}
 
@@ -242,11 +262,15 @@ function MessageBubble({
   onCopy,
   isCopied,
   userName,
+  onFeedback,
+  isSubmittingFeedback,
 }: {
   message: UIMessage;
   onCopy: (text: string, id: string) => void;
   isCopied: boolean;
   userName: string;
+  onFeedback: (messageId: string, rating: 'HELPFUL' | 'NOT_HELPFUL') => void;
+  isSubmittingFeedback: boolean;
 }) {
   const isUser = message.role === 'user';
 
@@ -278,7 +302,10 @@ function MessageBubble({
         </div>
 
         {!isUser && (
-          <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={cn(
+            'flex items-center gap-2 mt-2 transition-opacity',
+            message.feedback ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          )}>
             <button
               onClick={() => onCopy(message.content, message.id)}
               className="p-1.5 hover:bg-surface-muted rounded-lg transition-colors"
@@ -291,17 +318,38 @@ function MessageBubble({
               )}
             </button>
             <button
-              className="p-1.5 hover:bg-surface-muted rounded-lg transition-colors"
+              onClick={() => onFeedback(message.id, 'HELPFUL')}
+              disabled={isSubmittingFeedback || !!message.feedback}
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                message.feedback === 'HELPFUL'
+                  ? 'bg-brand-green-lighter text-brand-green'
+                  : 'hover:bg-surface-muted text-text-muted',
+                (isSubmittingFeedback || message.feedback) && 'cursor-not-allowed'
+              )}
               title="Helpful"
             >
-              <ThumbsUp className="w-4 h-4 text-text-muted" />
+              <ThumbsUp className="w-4 h-4" />
             </button>
             <button
-              className="p-1.5 hover:bg-surface-muted rounded-lg transition-colors"
+              onClick={() => onFeedback(message.id, 'NOT_HELPFUL')}
+              disabled={isSubmittingFeedback || !!message.feedback}
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                message.feedback === 'NOT_HELPFUL'
+                  ? 'bg-red-100 text-red-600'
+                  : 'hover:bg-surface-muted text-text-muted',
+                (isSubmittingFeedback || message.feedback) && 'cursor-not-allowed'
+              )}
               title="Not helpful"
             >
-              <ThumbsDown className="w-4 h-4 text-text-muted" />
+              <ThumbsDown className="w-4 h-4" />
             </button>
+            {message.feedback && (
+              <span className="text-xs text-text-muted ml-1">
+                Thanks for your feedback!
+              </span>
+            )}
           </div>
         )}
       </div>

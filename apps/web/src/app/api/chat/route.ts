@@ -9,6 +9,7 @@ import {
   serverErrorResponse,
   validateRequiredFields,
 } from '@/lib/api-utils';
+import { checkChatRateLimit } from '@/lib/rate-limit';
 
 // GET /api/chat - List conversations
 export async function GET(request: NextRequest) {
@@ -62,6 +63,16 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationId, stream = false } = body;
 
+    // Check rate limit for free tier users
+    const rateLimit = await checkChatRateLimit(dbUser.id, dbUser.subscriptionTier);
+    if (!rateLimit.allowed) {
+      return errorResponse(
+        `You've reached your free limit of ${rateLimit.limit} AI messages this month. ` +
+        `Upgrade to Premium for unlimited AI chat. Your limit resets on ${rateLimit.resetDate.toLocaleDateString()}.`,
+        429
+      );
+    }
+
     // Get or create conversation
     let conversation;
     if (conversationId) {
@@ -107,8 +118,29 @@ export async function POST(request: NextRequest) {
     }));
     messageHistory.push({ role: 'user', content: message });
 
-    // Build user context for personalization
-    const userContext = `User: ${dbUser.email}. Subscription: ${dbUser.subscriptionTier}.`;
+    // Build user context for personalization (including onboarding data)
+    const contextParts = [
+      `User: ${dbUser.displayName || dbUser.email}`,
+      `Subscription: ${dbUser.subscriptionTier}`,
+    ];
+
+    // Add onboarding data for better personalization
+    if (dbUser.onboardingData) {
+      const onboarding = dbUser.onboardingData;
+      if (onboarding.ageRange) contextParts.push(`Age range: ${onboarding.ageRange}`);
+      if (onboarding.employmentStatus) contextParts.push(`Employment: ${onboarding.employmentStatus}`);
+      if (onboarding.relationshipStatus) contextParts.push(`Relationship: ${onboarding.relationshipStatus}`);
+      if (onboarding.hasChildren !== null) contextParts.push(`Has children: ${onboarding.hasChildren ? 'yes' : 'no'}`);
+      if (onboarding.hasRetirementAccounts !== null) contextParts.push(`Has retirement accounts: ${onboarding.hasRetirementAccounts ? 'yes' : 'no'}`);
+      if (onboarding.hasOld401k !== null) contextParts.push(`Has old 401k to roll over: ${onboarding.hasOld401k ? 'yes' : 'no'}`);
+      if (onboarding.hasLifeInsurance !== null) contextParts.push(`Has life insurance: ${onboarding.hasLifeInsurance ? 'yes' : 'no'}`);
+      if (onboarding.hasWill !== null) contextParts.push(`Has will/estate plan: ${onboarding.hasWill ? 'yes' : 'no'}`);
+      if (onboarding.hasEmergencyFund !== null) contextParts.push(`Has emergency fund: ${onboarding.hasEmergencyFund ? 'yes' : 'no'}`);
+      if (onboarding.recentLifeEvents?.length) contextParts.push(`Recent life events: ${onboarding.recentLifeEvents.join(', ')}`);
+      if (onboarding.financialGoals?.length) contextParts.push(`Financial goals: ${onboarding.financialGoals.join(', ')}`);
+    }
+
+    const userContext = contextParts.join('. ') + '.';
 
     if (stream) {
       // Return streaming response

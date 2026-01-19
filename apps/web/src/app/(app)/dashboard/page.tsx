@@ -35,6 +35,8 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [aiTip, setAiTip] = useState<string | null>(null);
+  const [tipLoading, setTipLoading] = useState(true);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -48,7 +50,19 @@ export default function DashboardPage() {
       }
     };
 
+    const fetchTip = async () => {
+      try {
+        const response = await api.getPersonalizedTip();
+        setAiTip(response.data?.tip || null);
+      } catch (error) {
+        console.error('Failed to fetch AI tip:', error);
+      } finally {
+        setTipLoading(false);
+      }
+    };
+
     fetchTasks();
+    fetchTip();
   }, []);
 
   const greeting = () => {
@@ -191,13 +205,20 @@ export default function DashboardPage() {
               <div className="w-10 h-10 bg-brand-green rounded-lg flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="font-semibold text-text-primary mb-1">AI Tip</h3>
-                <p className="text-sm text-text-secondary">
-                  Based on your profile, consider reviewing your credit report this month. It&apos;s been 6 months since your last check.
-                </p>
+                {tipLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 bg-brand-green/10 rounded animate-pulse w-full" />
+                    <div className="h-3 bg-brand-green/10 rounded animate-pulse w-3/4" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-secondary">
+                    {aiTip || "Stay on top of your finances by checking in regularly. Small consistent actions add up to big results!"}
+                  </p>
+                )}
                 <Link href="/chat" className="text-brand-green text-sm font-medium mt-2 inline-block hover:underline">
-                  Learn more →
+                  Ask AI Mentor →
                 </Link>
               </div>
             </div>

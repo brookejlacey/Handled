@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================================
@@ -200,9 +201,26 @@ model ChatMessage {
   createdAt         DateTime      @default(now()) @map("created_at")
 
   conversation      Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedback          ChatFeedback?
 
   @@index([conversationId, createdAt])
   @@map("chat_messages")
+}
+
+model ChatFeedback {
+  id                String        @id @default(uuid())
+  messageId         String        @unique @map("message_id")
+  userId            String        @map("user_id")
+
+  rating            FeedbackRating
+  comment           String?
+
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  message           ChatMessage   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("chat_feedback")
 }
 
 // ============================================================================
@@ -288,6 +306,11 @@ enum MessageRole {
   USER
   ASSISTANT
   SYSTEM
+}
+
+enum FeedbackRating {
+  HELPFUL
+  NOT_HELPFUL
 }
 
 enum DocumentCategory {

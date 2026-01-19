@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '@/utils/theme';
+import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 
 interface Message {
   id: string;
@@ -40,11 +44,23 @@ const SUGGESTED_QUESTIONS = [
 export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const { isAuthenticated } = useAuthStore();
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || isLoading) return;
+
+    // Check authentication
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Sign In Required',
+        'Please sign in to chat with the AI assistant.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -55,31 +71,48 @@ export default function ChatScreen() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
-    setIsTyping(true);
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
+    try {
+      const response = await api.sendMessage(text.trim(), conversationId || undefined);
+
+      if (response.success && response.data) {
+        const assistantMessage: Message = {
+          id: response.data.message.id,
+          role: 'assistant',
+          content: response.data.message.content,
+          timestamp: new Date(response.data.message.createdAt),
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        setConversationId(response.data.conversationId);
+      } else {
+        // Handle API error
+        const errorMessage: Message = {
+          id: 'error-' + Date.now(),
+          role: 'assistant',
+          content: response.error || "I'm sorry, I couldn't process your message. Please try again.",
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage: Message = {
+        id: 'error-' + Date.now(),
         role: 'assistant',
-        content: getSimulatedResponse(text),
+        content: "I'm having trouble connecting right now. Please check your internet connection and try again.",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setIsTyping(false);
-    }, 1500);
-  };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading, isAuthenticated, conversationId]);
 
-  const getSimulatedResponse = (question: string): string => {
-    // Simple simulated responses for demo purposes
-    if (question.toLowerCase().includes('credit score')) {
-      return "Great question! Your credit score is a number between 300-850 that represents your creditworthiness. Here's what you should know:\n\n• 670-739 is considered \"good\"\n• 740-799 is \"very good\"\n• 800+ is \"excellent\"\n\nI'd recommend checking your score quarterly - it's free and doesn't hurt your credit. Would you like me to add a reminder to check your credit score?";
-    }
-    if (question.toLowerCase().includes('savings')) {
-      return "A good rule of thumb is to have 3-6 months of essential expenses saved in an emergency fund. This should cover:\n\n• Rent/mortgage\n• Utilities\n• Food\n• Insurance\n• Minimum debt payments\n\nStart with a goal of $1,000, then build from there. Even $50/month adds up! Want me to help you calculate your target amount?";
-    }
-    return "That's a great question. I'd be happy to help you think through this. Could you tell me a bit more about your specific situation? For example, what prompted this question?";
-  };
+  const startNewChat = useCallback(() => {
+    setMessages(INITIAL_MESSAGES);
+    setConversationId(null);
+  }, []);
 
   const renderMessage = ({ item }: { item: Message }) => (
     <View
@@ -106,9 +139,16 @@ export default function ChatScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Chat</Text>
-        <Pressable style={styles.newChatButton}>
-          <Feather name="edit" size={20} color={COLORS.primary} />
-        </Pressable>
+        <View style={styles.headerButtons}>
+          {messages.length > 1 && (
+            <Pressable style={styles.newChatButton} onPress={startNewChat}>
+              <Feather name="refresh-cw" size={18} color={COLORS.primary} />
+            </Pressable>
+          )}
+          <Pressable style={styles.newChatButton}>
+            <Feather name="edit" size={20} color={COLORS.primary} />
+          </Pressable>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -125,17 +165,18 @@ export default function ChatScreen() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
           ListFooterComponent={
             <>
-              {isTyping && (
+              {isLoading && (
                 <View style={styles.typingIndicator}>
                   <View style={styles.avatarContainer}>
                     <Feather name="message-circle" size={16} color={COLORS.primary} />
                   </View>
                   <View style={styles.typingBubble}>
-                    <Text style={styles.typingText}>Typing...</Text>
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                    <Text style={styles.typingText}>Thinking...</Text>
                   </View>
                 </View>
               )}
-              {messages.length === 1 && (
+              {messages.length === 1 && !isLoading && (
                 <View style={styles.suggestedQuestions}>
                   <Text style={styles.suggestedTitle}>Try asking:</Text>
                   {SUGGESTED_QUESTIONS.map((question, index) => (
@@ -165,19 +206,28 @@ export default function ChatScreen() {
             onChangeText={setInputText}
             multiline
             maxLength={1000}
+            editable={!isLoading}
           />
           <Pressable
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+            style={[styles.sendButton, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
             onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim()}
+            disabled={!inputText.trim() || isLoading}
           >
-            <Feather
-              name="send"
-              size={20}
-              color={inputText.trim() ? COLORS.primary : COLORS.textTertiary}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color={COLORS.textTertiary} />
+            ) : (
+              <Feather
+                name="send"
+                size={20}
+                color={inputText.trim() ? COLORS.primary : COLORS.textTertiary}
+              />
+            )}
           </Pressable>
         </View>
+
+        <Text style={styles.disclaimer}>
+          AI responses are for educational purposes. Consult a professional for major decisions.
+        </Text>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -193,6 +243,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.lg,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
   },
   title: {
     fontSize: FONT_SIZES.xxl,
@@ -259,6 +313,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
     padding: SPACING.md,
     backgroundColor: COLORS.background,
     borderRadius: BORDER_RADIUS.lg,
@@ -322,5 +379,12 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.5,
+  },
+  disclaimer: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
 });

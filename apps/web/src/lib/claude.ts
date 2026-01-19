@@ -1,5 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+// pdf-parse uses CommonJS export pattern
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>;
+
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -126,33 +130,65 @@ export async function analyzeDocument(
   mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf',
   fileName: string
 ): Promise<DocumentAnalysis> {
-  // PDF files can't be sent as images - analyze via text extraction prompt
+  // PDF files - extract text first, then analyze
   if (mediaType === 'application/pdf') {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      system: DOCUMENT_ANALYSIS_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: `Please analyze this PDF document: "${fileName}". Note: The document content could not be extracted. Please provide a generic analysis structure for a PDF document.`,
-        },
-      ],
-    });
-
-    const textContent = response.content.find((c) => c.type === 'text');
-    const text = textContent?.type === 'text' ? textContent.text : '{}';
-
     try {
-      const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/) || text.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
-      return JSON.parse(jsonStr);
-    } catch {
+      // Decode base64 to buffer and extract text
+      const pdfBuffer = Buffer.from(base64Content, 'base64');
+      const pdfData = await pdfParse(pdfBuffer);
+      const extractedText = pdfData.text;
+
+      if (!extractedText || extractedText.trim().length < 50) {
+        return {
+          documentType: 'pdf',
+          summary: 'This PDF appears to be scanned or image-based. Please upload a text-based PDF or an image of the document for analysis.',
+          keyFindings: [],
+          actionItems: ['Consider using a text-based PDF or uploading images of individual pages'],
+          relevantTasks: [],
+        };
+      }
+
+      // Truncate if too long (Claude has context limits)
+      const maxChars = 30000;
+      const textToAnalyze = extractedText.length > maxChars
+        ? extractedText.substring(0, maxChars) + '\n\n[Document truncated for analysis...]'
+        : extractedText;
+
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        system: DOCUMENT_ANALYSIS_PROMPT,
+        messages: [
+          {
+            role: 'user',
+            content: `Please analyze this financial document titled "${fileName}".\n\nDocument content:\n\n${textToAnalyze}\n\nProvide your analysis in the JSON format specified.`,
+          },
+        ],
+      });
+
+      const textContent = response.content.find((c) => c.type === 'text');
+      const text = textContent?.type === 'text' ? textContent.text : '{}';
+
+      try {
+        const jsonMatch = text.match(/```json\n?([\s\S]*?)\n?```/) || text.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : text;
+        return JSON.parse(jsonStr);
+      } catch {
+        return {
+          documentType: 'pdf',
+          summary: text,
+          keyFindings: [],
+          actionItems: [],
+          relevantTasks: [],
+        };
+      }
+    } catch (pdfError) {
+      console.error('PDF parsing error:', pdfError);
       return {
         documentType: 'pdf',
-        summary: 'PDF document uploaded - content analysis requires additional processing.',
+        summary: 'Unable to extract text from this PDF. The file may be corrupted, password-protected, or scanned. Try uploading a different version or individual page images.',
         keyFindings: [],
-        actionItems: [],
+        actionItems: ['Try uploading a text-based PDF', 'Or upload screenshots/images of key pages'],
         relevantTasks: [],
       };
     }

@@ -194,6 +194,24 @@ class ApiClient {
     });
   }
 
+  async submitFeedback(data: {
+    messageId: string;
+    rating: 'HELPFUL' | 'NOT_HELPFUL';
+    comment?: string;
+  }): Promise<{
+    feedback: {
+      id: string;
+      messageId: string;
+      rating: string;
+      comment?: string | null;
+    };
+  }> {
+    return this.request('/api/chat/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Document endpoints
   async getDocuments(): Promise<{
     documents: Document[];
@@ -258,6 +276,11 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  // AI endpoints
+  async getPersonalizedTip(): Promise<{ data: { tip: string } }> {
+    return this.request('/api/ai/tip');
   }
 }
 

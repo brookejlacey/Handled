@@ -38,7 +38,15 @@
       "Bash(printf:*)",
       "WebFetch(domain:handled.finance)",
       "Bash(npx supabase:*)",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Bash(python3:*)",
+      "Bash(xargs:*)",
+      "Bash(npx prisma generate)",
+      "Bash(npm run typecheck:*)",
+      "Bash(EXPO_NO_DOCTOR=1 npx expo start:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm view:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

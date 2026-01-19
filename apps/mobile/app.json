@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#FAF9F6"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.gethandled.mobile",
@@ -50,8 +52,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "ee4ccfba-a009-4030-893e-d0f49eba91d4"
       }
-    }
+    },
+    "owner": "brooke-org"
   }
 }
